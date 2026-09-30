@@ -1,10 +1,28 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import posthog from "posthog-js";
 import { EventItem } from "@/lib/constants";
+import { eventDirectoryLogger } from "@/lib/posthog-logger";
 
 const EventCard = ({ title, image, slug, location, date, time }: EventItem) => {
+    const handleEventSelection = () => {
+        if (
+            process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+            process.env.NEXT_PUBLIC_POSTHOG_HOST
+        ) {
+            posthog.capture("event_card_selected", {
+                event_slug: slug,
+            });
+            eventDirectoryLogger.info("event card selected", {
+                event_slug: slug,
+            });
+        }
+    };
+
     return (
-        <Link href={`/events/${slug}`} id="event-card">
+        <Link href={`/events/${slug}`} id="event-card" onClick={handleEventSelection}>
             <Image src={image} alt={title} width={410} height={300} className="poster" />
 
             <div className="flex flex-row gap-2">
