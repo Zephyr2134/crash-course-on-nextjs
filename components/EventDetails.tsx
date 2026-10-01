@@ -3,8 +3,10 @@ import Image from "next/image";
 import BookEvent from "@/components/BookEvent";
 import { getSimilarEventsBySlug } from "@/lib/actions/event.actions";
 import { IEvent } from "@/database/event.model";
+import Event from "@/database/event.model";
 import EventCard from "@/components/EventCard";
 import { cacheLife } from "next/cache";
+import connectDB from "@/lib/mongodb";
 
 const EventDetailItem = ({ icon, alt, label }: any) => {
     return (
@@ -40,19 +42,20 @@ const EventTags = ({ tags }: { tags: string[] }) => {
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
-const EventDetails = async ({ params }: { params: Promise<{ slug: string }> }) => {
+const EventDetails = async ({ slug }: { slug: string }) => {
     'use cache';
     cacheLife('hours');
 
-    const slug = await params;
-    const request = await fetch(`${BASE_URL}/api/events/${slug}`);
-    const { event: { _id, title, description, overview, date, time, location, mode, agenda, audience, tags, image, organizer } } = await request.json();
+    await connectDB();
+    const doc = await Event.findOne({ slug }).lean();
+    if (!doc) return notFound();
 
-    if (!title) { return notFound(); }
+    // plain, serializable object (ObjectId/Date -> string)
+    const { _id, title, description, overview, date, time, location, mode,
+        agenda, audience, tags, image, organizer } = JSON.parse(JSON.stringify(doc));
 
     const booking = 10;
-
-    const similarEvents: IEvent[] = await getSimilarEventsBySlug(slug.slug);
+    const similarEvents: IEvent[] = await getSimilarEventsBySlug(slug);
 
     return (
         <section id="event">
@@ -104,7 +107,7 @@ const EventDetails = async ({ params }: { params: Promise<{ slug: string }> }) =
                                 Be the first to book your spot!
                             </p>)}
 
-                        <BookEvent eventId={_id} slug={slug.slug} />
+                        <BookEvent eventId={_id} slug={slug} />
                     </div>
                 </aside>
             </div>
